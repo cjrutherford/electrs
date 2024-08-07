@@ -85,9 +85,12 @@ fn run_server(config: Arc<Config>) -> Result<()> {
         match Mempool::update(&mempool, &daemon) {
             Ok(_) => break,
             Err(e) => {
-                warn!("Error performing initial mempool update, trying again in 5 seconds: {}", e.display_chain());
+                warn!(
+                    "Error performing initial mempool update, trying again in 5 seconds: {}",
+                    e.display_chain()
+                );
                 signal.wait(Duration::from_secs(5), false)?;
-            },
+            }
         }
     }
 
@@ -117,7 +120,6 @@ fn run_server(config: Arc<Config>) -> Result<()> {
     ));
 
     loop {
-
         main_loop_count.inc();
 
         if let Err(err) = signal.wait(Duration::from_secs(5), true) {
@@ -137,7 +139,10 @@ fn run_server(config: Arc<Config>) -> Result<()> {
         // Update mempool
         if let Err(e) = Mempool::update(&mempool, &daemon) {
             // Log the error if the result is an Err
-            warn!("Error updating mempool, skipping mempool update: {}", e.display_chain());
+            warn!(
+                "Error updating mempool, skipping mempool update: {}",
+                e.display_chain()
+            );
         }
 
         // Update subscribed clients
