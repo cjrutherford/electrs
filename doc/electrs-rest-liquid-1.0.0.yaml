@@ -1,0 +1,1153 @@
+openapi: 3.0.0
+tags:
+  - name: address
+    description: Address Operations
+  - name: block
+    description: Block Operations
+  - name: tx
+    description: Transaction Operations 
+  - name: scripthash
+    description: Script Operations
+  - name: mempool
+    description: unconfirmed Block Operations
+  - name: assets
+    description: Asset Operations
+  - name: default
+    description: Everything else
+info:
+  title: Electrs Rest API
+  version: 1.0.0
+  description: |
+    A Rust Implementation of the Electrum Server.
+    This is the Liquid version of the api.
+servers: 
+  - description: "Blockstream Public (liquid)" 
+    url: "https://blockstream.info/liquid/api/"
+  - description: "Blockstream Public (bitcoin)" 
+    url: "https://blockstream.info/api/"
+paths:
+  /blocks/tip/hash:
+    get:
+      tags:
+        - block
+      summary: Get the hash of the best tip block
+      responses:
+        '200':
+          description: The hash of the best tip block
+          content:
+            text/plain:
+              schema:
+                type: string
+  /blocks/tip/height:
+    get:
+      tags:
+        - block
+      summary: Get the height of the tip block
+      responses:
+        '200':
+          description: The height of the tip block
+          content:
+            text/plain:
+              schema:
+                type: string
+  /blocks/{start_height}:
+    get:
+      tags:
+        - block
+      summary: Get blocks starting from a specific height
+      parameters:
+        - name: start_height
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of blocks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Block'
+  /block-height/{height}:
+    get:
+      tags:
+        - block
+      summary: Get block header by height
+      parameters:
+        - name: height
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Block header
+          content:
+            application/json:
+              schema:
+                type: string
+  /block/{hash}:
+    get:
+      tags:
+        - block
+      summary: Returns information about a block
+      description: |
+          Elements-based chains have an additional `proof` field. <!--TODO: add link to block-format -->
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Block data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Block'
+  /block/{hash}/status:
+    get:
+      tags:
+        - block
+      summary: Get block status by hash
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Block status
+          content:
+            application/json:
+              schema:
+                type: object
+  /block/{hash}/txids:
+    get:
+      tags:
+        - block
+      summary: Returns a list of transaction IDs in a block.
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transaction IDs (responses can be cached indefinitely)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /block/{hash}/header:
+    get:
+      tags:
+        - block
+      summary: Returns the hex encoded block header
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Block header
+          content:
+            text/plain:
+              schema:
+                type: string
+  /block/{hash}/raw:
+    get:
+      tags:
+        - block
+      summary: Returns the binary representation of the block
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Raw block data (responses can be cached indefinitely)
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+  /block/{hash}/hex:
+    get:
+      tags:
+        - block
+      summary: Returns the raw block data
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Raw block data
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+  /block/{hash}/txid/{index}:
+    get:
+      tags:
+        - block
+      summary: Returns up to 25 transactions based on an optional starting index.
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Transaction ID (responses can be cached indefinitely)
+          content:
+            text/plain:
+              schema:
+                type: string
+  /block/{hash}/txs:
+    get:
+      tags:
+        - block
+      summary: Get transactions in a block starting from an index
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: start_index
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Transactions for a given block
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+  /address-prefix/{address_prefix}:
+    get:
+      tags:
+        - address
+      summary: Get address stats by prefix
+      description: |
+        Elements-based chains don't have the `{funded,spent}_txo_sum` fields.
+        Returns a list of up to 10 addresses that start with the prefix
+      parameters:
+        - name: address_prefix
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Address chain and mempool stats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Address'
+  /address/{address}:
+    get:
+      tags:
+        - address
+      summary: Get address stats
+      description: |
+          Elements-based chains don't have the `{funded,spent}_txo_sum` fields.  
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Address chain and mempool stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+  /scripthash/{hash}:
+    get:
+      tags:
+        - scripthash
+      summary: Returns information about a scripthash
+      description: | 
+         Elements-based chains don't have the `{funded,spent}_txo_sum` fields.  
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Scripthash chain and mempool stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Address'
+  /address/{address}/txs:
+    get:
+      tags:
+        - address
+      summary: Get transactions for an address
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+  /address/{address}/txs/chain:
+    get:
+      tags:
+        - address
+      summary: Returns up to 50 mempool transactions plus the first 25 confirmed transactions.
+      description: Returns 25 transactions per page. More can be requested by specifying the last txid seen by the previous query (testable in next route with {last_seen}).
+      parameters: 
+        - name: address
+          in: path
+          required: true
+          schema: 
+            type: string
+      responses:
+        '200':
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+  /address/{address}/txs/chain/{last_seen_txid}:
+    get:
+      tags:
+        - address
+      summary: Returns up to 50 mempool transactions plus the first 25 confirmed transactions.
+      description: Returns 25 transactions per page. More can be requested by specifying the last txid seen by the previous query.
+      parameters: 
+        - name: address
+          in: path
+          required: true
+          schema: 
+            type: string
+        - name: last_seen_txid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+  /scripthash/{hash}/txs/chain:
+    get:
+      tags:
+        - scripthash
+      summary: Returns up to 50 mempool transactions plus the first 25 confirmed transactions.
+      description: Returns 25 transactions per page. More can be requested by specifying the last txid seen by the previous query.
+      parameters: 
+        - name: hash
+          in: path
+          required: true
+          schema: 
+            type: string
+      responses:
+        '200':
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+  /scripthash/{hash}/txs/chain/{last_seen_txid}:
+    get:
+      tags:
+        - scripthash
+      summary: Returns up to 50 mempool transactions plus the first 25 confirmed transactions.
+      description: Returns 25 transactions per page. More can be requested by specifying the last txid seen by the previous query.
+      parameters: 
+        - name: hash
+          in: path
+          required: true
+          schema: 
+            type: string
+        - name: last_seen_txid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+  /address/{address}/txs/mempool:
+    get:
+      tags:
+        - address
+        - mempool
+      summary: Get unconfirmed transaction history for the specified address/scripthash.
+      description: Returns up to 50 transactions (No Paging)
+      parameters:
+      - name: address
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+  /scripthash/{hash}/txs/mempool:
+    get:
+      tags:
+        - scripthash
+        - mempool
+      summary: Get unconfirmed transaction history for the specified address/scripthash.
+      description: Returns up to 50 transactions (No Paging)
+      parameters:
+      - name: hash
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+  /address/{address}/utxo:
+    get:
+      tags:
+        - address
+      summary: Get the list of unspent transaction outputs associated with the address
+      description: |
+          Elements based chains have a different repsponse structure.
+      parameters:
+        - name: address
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: UTXOs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Utxo'
+  /scripthash/{hash}/utxo:
+    get:
+      tags:
+        - scripthash
+      summary: Get the list of unspent transaction outputs associated with the address
+      description: |
+          Elements based chains have a different repsponse structure.
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: UTXOs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Utxo'
+  /tx/{txid}:
+    get:
+      tags:
+        - tx
+      summary: Returns information about the transaction
+      parameters:
+        - name: txid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transaction data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+  /tx/{txid}/status:
+    get:
+      tags:
+        - tx
+      summary: Returns transaction confirmation status by hash
+      parameters:
+        - name: txid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transaction status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TxStatus'
+  /tx/{hash}/merkleblock-proof:
+    get:
+      tags:
+        - tx
+      summary: Merkle Proof (Electrum get-merkle)
+      description: |
+          Returns a Merkle inclusion proof for the transaction  
+          using [Electrum's `get-merkle`](https://electrumx.readthedocs.io/en/latest/protocol-methods.html#blockchain-transaction-get-merkle) format.  
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Merkle proof
+          content:
+            application/json:
+              schema:
+                type: string
+  /tx/{hash}/merkle-proof:
+    get:
+      tags: 
+        - tx
+      summary: Merkle Inclusing Proof (Bitcoind merkleblock)
+      description: |
+          Returns a Merkle inclusion proof for the transaction using   
+          [bitcoind's merkelblock](https://btcinformation.org/en/glossary/merkle-block) format.  
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Merkle proof
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MerkleProof'
+  /tx/{hash}/outspend/{index}:
+    get:
+      tags:
+        - tx
+      summary: Returns the spending status of a transaction output
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Outspend information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Outspend'
+  /tx/{hash}/outspends:
+    get:
+      tags: 
+        - tx
+      summary: Get outspend information for all outputs of a transaction
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Outspend information
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Outspend'
+  /broadcast:
+    get:
+      tags: 
+        - tx
+      summary: Broadcast a transaction
+      description: |
+        The transaction should be provided as hex in the request body.   
+        the `txid` will be returned on success.
+      parameters:
+        - name: tx
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transaction ID
+          content:
+            text/plain:
+              schema:
+                type: string
+  /tx:
+    post:
+      tags: 
+        - tx
+      summary: Broadcast a transaction      
+      description: |
+        The transaction should be provided as hex in the request body.  
+        The `txid` will be returned on success.
+      requestBody:
+        content:
+          text/plain:
+            schema:
+              type: string
+      responses:
+        '201':
+          description: Transaction ID
+          content:
+            text/plain:
+              schema:
+                type: string
+  /mempool:
+    get:
+      tags:
+        - mempool
+      summary: Get mempool backlog stats
+      responses:
+        '200':
+          description: Mempool backlog stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MempoolBacklogStats'
+  /mempool/txids:
+    get:
+      tags:
+        - mempool
+      summary: Returns the full list of transaction IDs in the mempool as an array.
+      description: The order of the Transaction IDs is arbitrary and does not match bitcoind's order.
+      responses:
+        '200':
+          description: Mempool transaction IDs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+  /mempool/recent:
+    get:
+      tags:
+        - mempool
+      summary: Returns the last 10 transactions to enter the mempool.
+      description: Each Transaction object contains a simplified overview of the data.
+      responses:
+        '200':
+          description: Recent mempool transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MempoolTx'
+  /fee-estimates:
+    get:
+      summary: Returns an JSON object with key value pairs of Blocks to Fees for confirmation.
+      description: |
+        The key is the confirmation target, or number of blocks until the transaction is confirmed.  
+        The value is the estimated fee rate (in satoshi/vByte) for the confirmation target.  
+        available confirmation targets are 1-25, 144, 504, and 1008 blocks.
+      responses:
+        '200':
+          description: Fee estimates
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+  /asset/{asset_id}:
+    get:
+      tags: 
+        - assets
+      summary: Get asset information by asset_id
+      description: |
+        Returns information about the asset with the given asset_id.
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Asset information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+  /asset/{asset_id}/txs:
+    get:
+      tags: 
+        - assets
+      summary: Get transactions for an asset
+      description: |
+        Returns a list of transactions for the asset with the given asset_id.
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+  /asset/{asset_id}/txs/mempool:
+    get:
+      tags: 
+        - assets
+        - mempool
+      summary: Get unconfirmed transaction history for the specified asset.
+      description: Returns up to 50 transactions (No Paging)
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+  /asset/{asset_id}/txs/chain/{last_seen}:
+    get:
+      tags: 
+        - assets
+      summary: Returns up to 50 mempool transactions plus the first 25 confirmed transactions.
+      description: |
+        Get the current total supply of the specified asset.
+        For the native asset (L-BTC), this is calculated as `{chain,mempool}_stats.peg_in_amount - {chain,mempool}_stats.peg_out_amount - {chain,mempool}_stats.burned_amount`.
+        For issued assets, this is calculated as `{chain,mempool}_stats.issued_amount - {chain,mempool}_stats.burned_amount`.
+        Not available for assets with blinded issuances.
+        If `/decimal` is specified, returns the supply as a decimal according to the asset's divisibility.
+        Otherwise, returned in base units.
+      parameters: 
+        - name: asset_id
+          in: path
+          required: true
+          schema: 
+            type: string
+        - name: last_seen
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+  /asset/{asset_id}/supply:
+    get:
+      tags: 
+        - assets
+      summary: Get the total supply of an asset
+      description: |
+        Get the current total supply of the specified asset.
+        For the native asset (L-BTC), this is calculated as `{chain,mempool}_stats.peg_in_amount - {chain,mempool}_stats.peg_out_amount - {chain,mempool}_stats.burned_amount`.
+        For issued assets, this is calculated as `{chain,mempool}_stats.issued_amount - {chain,mempool}_stats.burned_amount`.
+        Not available for assets with blinded issuances.
+        If `/decimal` is specified, returns the supply as a decimal according to the asset's divisibility.
+        Otherwise, returned in base units.
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Total supply
+          content:
+            text/plain:
+              schema:
+                type: string
+  /asset/{asset_id}/supply/decimal:
+    get:
+      tags: 
+        - assets
+      summary: Get the total supply
+      description: |
+        Get the current total supply of the specified asset.
+        For the native asset (L-BTC), this is calculated as `{chain,mempool}_stats.peg_in_amount - {chain,mempool}_stats.peg_out_amount - {chain,mempool}_stats.burned_amount`.
+        For issued assets, this is calculated as `{chain,mempool}_stats.issued_amount - {chain,mempool}_stats.burned_amount`.
+        Not available for assets with blinded issuances.
+        If `/decimal` is specified, returns the supply as a decimal according to the asset's divisibility.
+        Otherwise, returned in base units.
+      parameters:
+        - name: asset_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Total supply
+          content:
+            text/plain:
+              schema:
+                type: integer
+  /assets/registry:
+    get:
+      tags: 
+        - assets
+      summary: Get the asset registry
+      description: |
+        Returns a list of all assets in the registry.
+        Total results will be returned in the `X-Total-Results` header.
+      parameters:
+        - name: start_index
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: sort_field
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: sort_dir
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Asset registry
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Asset'
+components:
+  schemas:
+    Block:
+      type: object
+      properties:
+        name: 
+          type: string
+        height: 
+          type: integer
+        version:
+          type: integer
+        timestamp: 
+          type: integer
+        tx_count: 
+          type: integer
+        size: 
+          type: integer
+        weight:
+          type: integer
+        merkle_root:
+          type: string
+        previousblockhash:
+          type: string
+        mediantime:
+          type: integer
+        nonce: 
+          type: integer
+        bits:
+          type: integer
+        difficulty:
+          type: number
+        proof:
+          type: string
+    BlockStatus:
+      type: object
+      properties:
+        in_best_chain: 
+          type: boolean
+        height:
+          type: integer
+        next_best: 
+          type: string
+    Transaction:
+      type: object
+      properties:
+        txid: 
+          type: string
+        version:
+          type: number
+        locktime:
+          type: number
+        vin:
+          type: array
+          items:
+            $ref: '#/components/schemas/TxVin'
+        vout: 
+          type: array
+          items:  
+            $ref: '#/components/schemas/TxVout'
+        weight:
+          type: integer
+        size:
+          type: integer
+        status:
+          $ref: '#/components/schemas/TxStatus'
+    TxStatus:
+      type: object
+      properties:
+        confirmed: 
+          type: boolean
+        block_height: 
+          type: integer
+        block_hash:
+          type: integer
+        block_time:
+          type: integer
+    TxVin:
+      type: object
+      properties:
+        txid: 
+          type: string
+        vout: 
+          type: integer
+        prevout: 
+          type: string
+        scriptsig: 
+          type: string
+        scriptsig_asm: 
+          type: string
+        witness: 
+          type: array
+          items:
+            type: string
+        is_coinbase: 
+          type: boolean
+        sequence: 
+          type: integer
+    TxVout:
+      type: object
+      properties:
+        scriptpubkey:
+          type: string
+        scriptpubkey_asm:
+          type: string
+        scriptpubkey_type:
+          type: string
+        scriptpubkey_address:
+          type: string
+        value:
+          type: integer
+    Address:
+      type: object
+      properties:
+        address: 
+          type: string
+        chain_stats:
+          $ref: '#/components/schemas/ChainStats'
+        mempool_stats:
+          $ref: '#/components/schemas/MempoolStats'
+    ChainStats:
+      type: object
+      properties:
+        funded_txo_count: 
+          type: integer
+        funded_txo_sum:
+          type: integer
+        spent_txo_count:
+          type: integer
+        spent_txo_sum:
+          type: integer
+        tx_count:
+          type: integer
+    MempoolStats:
+      type: object
+      properties:
+        funded_txo_count:
+          type: integer
+        funded_txo_sum:
+          type: integer
+        spent_txo_count:
+          type: integer
+        spent_txo_sum: 
+          type: integer
+        tx_count:
+          type: integer
+    Utxo:
+      type: object
+      properties:
+        txid:
+          type: string
+        vout: 
+          type: integer
+        status:
+          $ref: '#/components/schemas/TxStatus'
+        value: 
+          type: integer
+    MerkleProof:
+      type: object
+      properties:
+        block_height: 
+          type: integer
+        merkle: 
+          type: array
+          items:
+            type: string
+        pos: 
+          type: integer
+    Outspend:
+      type: object
+      properties:
+        spent:
+          type: boolean
+        txid:
+          type: string
+        vin: 
+          $ref: '#/components/schemas/TxVin'
+        status: 
+          $ref: '#/components/schemas/TxStatus'
+    MempoolBacklogStats:
+      type: object
+      properties:
+        count: 
+          type: integer
+        vsize:
+          type: integer
+        total_fee:
+          type: integer
+        fee_histogram:
+          type: array
+          items: 
+            type: array
+            items: 
+              type: number
+    MempoolTx:
+      type: object
+      properties: 
+        txid: 
+          type: string
+        fee:
+          type: integer
+        vsize: 
+          type: integer
+        value:  
+          type: integer
+    Asset:
+      type: object
+      properties:
+        asset_id:
+          type: string
+        chain_stats:
+          $ref: '#/components/schemas/ChainStats'
+        mempool_stats:
+          $ref: '#/components/schemas/MempoolStats'
+        issuance_txin:
+          $ref: '#/components/schemas/TxVin'
+        issuance_prevout:
+          $ref: '#/components/schemas/TxVout'
+        status:
+          $ref: '#/components/schemas/TxStatus'
+        reissuance_token:
+          type: string
+        contract: 
+          type: string
+        entity: 
+          type: object
+          properties:
+            domain:
+              type: string
+        ticker: 
+          type: string
+        precision:
+          type: integer
+        name: 
+          type: string
