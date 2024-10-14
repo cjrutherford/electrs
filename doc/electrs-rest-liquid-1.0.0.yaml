@@ -42,19 +42,19 @@ paths:
     get:
       tags:
         - block
-      summary: Get the height of the tip block
+      summary: Get the height of the best tip block
       responses:
         '200':
-          description: The height of the tip block
+          description: The height of the best tip block
           content:
             text/plain:
               schema:
-                type: string
+                type: integer
   /blocks/{start_height}:
     get:
       tags:
         - block
-      summary: Get blocks starting from a specific height
+      summary: Get 10 blocks starting from a specific height or the tip if not provided.
       parameters:
         - name: start_height
           in: path
@@ -74,7 +74,7 @@ paths:
     get:
       tags:
         - block
-      summary: Get block header by height
+      summary: Get hash of header for the block currently at the specified height
       parameters:
         - name: height
           in: path
@@ -125,7 +125,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/BlockStatus'
   /block/{hash}/txids:
     get:
       tags:
@@ -177,7 +177,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Raw block data (responses can be cached indefinitely)
+          description: Raw block data. (responses can be cached indefinitely)
           content:
             application/octet-stream:
               schema:
@@ -223,6 +223,31 @@ paths:
             text/plain:
               schema:
                 type: string
+  /block/{hash}/txs/{start_index}:
+    get:
+      tags:
+        - block
+      summary: Get transactions in a block starting from an index
+      parameters:
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: start_index
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Transactions for a given block
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
   /block/{hash}/txs:
     get:
       tags:
@@ -310,7 +335,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Address'
+                $ref: '#/components/schemas/ScriptHash'
   /address/{address}/txs:
     get:
       tags:
@@ -430,7 +455,7 @@ paths:
       tags:
         - address
         - mempool
-      summary: Get unconfirmed transaction history for the specified address/scripthash.
+      summary: Get unconfirmed transaction history for the specified address.
       description: Returns up to 50 transactions (No Paging)
       parameters:
       - name: address
@@ -452,7 +477,7 @@ paths:
       tags:
         - scripthash
         - mempool
-      summary: Get unconfirmed transaction history for the specified address/scripthash.
+      summary: Get unconfirmed transaction history for the specified scripthash.
       description: Returns up to 50 transactions (No Paging)
       parameters:
       - name: hash
@@ -549,6 +574,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TxStatus'
+  /tx/{txid}/hex:
+    get:
+      tags:
+        - tx
+      summary: Returns the raw transaction data in hexadecimal
+      parameters:
+        - name: txid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Raw transaction data
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+  /tx/{txid}/raw:
+    get:
+      tags:
+        - tx
+      summary: Returns the raw transaction data in binary
+      parameters:
+        - name: txid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Raw transaction data
+          content:
+            application/octet-stream:
+              schema:
+                type: string
   /tx/{hash}/merkleblock-proof:
     get:
       tags:
@@ -618,7 +679,7 @@ paths:
     get:
       tags: 
         - tx
-      summary: Get outspend information for all outputs of a transaction
+      summary: Returns the spending status of all transaction outputs
       parameters:
         - name: hash
           in: path
@@ -640,7 +701,7 @@ paths:
         - tx
       summary: Broadcast a transaction
       description: |
-        The transaction should be provided as hex in the request body.   
+        The transaction should be provided as hex in the url like `/?tx=<rawhex>`   
         the `txid` will be returned on success.
       parameters:
         - name: tx
@@ -659,7 +720,7 @@ paths:
     post:
       tags: 
         - tx
-      summary: Broadcast a transaction      
+      summary: Broadcast a raw transaction to the bitcoin network
       description: |
         The transaction should be provided as hex in the request body.  
         The `txid` will be returned on success.
@@ -679,7 +740,7 @@ paths:
     get:
       tags:
         - mempool
-      summary: Get mempool backlog stats
+      summary: Get mempool backlog statistics
       responses:
         '200':
           description: Mempool backlog stats
@@ -692,7 +753,7 @@ paths:
       tags:
         - mempool
       summary: Returns the full list of transaction IDs in the mempool as an array.
-      description: The order of the Transaction IDs is arbitrary and does not match bitcoind's order.
+      description: The order of the transaction IDs is arbitrary and does not match bitcoind's order.
       responses:
         '200':
           description: Mempool transaction IDs
@@ -740,6 +801,7 @@ paths:
       summary: Get asset information by asset_id
       description: |
         Returns information about the asset with the given asset_id.
+        The Asset in this documentation is L-BTC for the Liquid Network.
       parameters:
         - name: asset_id
           in: path
@@ -922,7 +984,7 @@ components:
     Block:
       type: object
       properties:
-        name: 
+        id: 
           type: string
         height: 
           type: integer
@@ -968,6 +1030,12 @@ components:
           type: number
         locktime:
           type: number
+        size:
+          type: integer
+        weight:
+          type: integer
+        fee:
+          type: number
         vin:
           type: array
           items:
@@ -976,10 +1044,6 @@ components:
           type: array
           items:  
             $ref: '#/components/schemas/TxVout'
-        weight:
-          type: integer
-        size:
-          type: integer
         status:
           $ref: '#/components/schemas/TxStatus'
     TxStatus:
@@ -990,7 +1054,7 @@ components:
         block_height: 
           type: integer
         block_hash:
-          type: integer
+          type: string
         block_time:
           type: integer
     TxVin:
@@ -1000,20 +1064,49 @@ components:
           type: string
         vout: 
           type: integer
-        prevout: 
-          type: string
+        is_coinbase: 
+          type: boolean
         scriptsig: 
           type: string
         scriptsig_asm: 
           type: string
+        inner_redeemscript_asm: 
+          type: string
+        inner_witnessscript_asm:
+          type: string
+        sequence: 
+          type: integer
         witness: 
           type: array
           items:
             type: string
-        is_coinbase: 
+        prevout: 
+          $ref: '#/components/schemas/TxVout'
+        is_pegin: 
           type: boolean
-        sequence: 
+        issuance:
+          $ref: '#/components/schemas/Issuance'
+    Issuance:
+      type: object
+      properties:
+        asset_id:
+          type: string
+        is_reissuance:
+          type: boolean
+        asset_blinding_nonce:
+          type: string
+        asset_entropy:
+          type: string
+        contract_hash:
+          type: string
+        assetamount:
           type: integer
+        tokenamount:
+          type: integer
+        assetamountcommitment:
+          type: string
+        tokenamountcommitment:
+          type: string
     TxVout:
       type: object
       properties:
@@ -1027,6 +1120,17 @@ components:
           type: string
         value:
           type: integer
+    ScriptHash:
+      type: object
+      properties:
+        address: 
+          type: string
+        chain_stats:
+          $ref: '#/components/schemas/ChainStats'
+        mempool_stats:
+          $ref: '#/components/schemas/MempoolStats'        
+        scripthash: 
+          type: string
     Address:
       type: object
       properties:
